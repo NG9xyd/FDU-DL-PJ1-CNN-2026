@@ -20,11 +20,12 @@ class Linear(Layer):
     """
     def __init__(self, in_dim, out_dim, initialize_method=np.random.normal, weight_decay=False, weight_decay_lambda=1e-8) -> None:
         super().__init__()
-        self.W = initialize_method(size=(in_dim, out_dim))
-        self.b = initialize_method(size=(1, out_dim))
+        self.params = {
+            'W': initialize_method(size=(in_dim, out_dim)),
+            'b': initialize_method(size=(1, out_dim)),
+        }
         self.grads = {'W' : None, 'b' : None}
         self.input = None
-        self.params = {'W' : self.W, 'b' : self.b}
 
         self.weight_decay = weight_decay
         self.weight_decay_lambda = weight_decay_lambda
@@ -39,7 +40,7 @@ class Linear(Layer):
         out: [batch_size, out_dim]
         """
         self.input = X
-        output = self.W @ X + self.b
+        output = X @ self.params['W'] + self.params['b']
         return output
         # pass
 
@@ -51,7 +52,7 @@ class Linear(Layer):
         """
         self.grads['W'] = self.input.T @ grad
         self.grads['b'] = np.sum(grad, axis=0, keepdims=True)
-        output = grad @ self.W.T
+        output = grad @ self.params['W'].T
         return output
         # pass
     
@@ -69,8 +70,10 @@ class conv2D(Layer):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
-        self.W = initialize_method(size=(out_channels, in_channels, kernel_size, kernel_size))
-        self.b = initialize_method(size=(1, out_channels, 1, 1))
+        self.params = {
+            'W': initialize_method(size=(out_channels, in_channels, kernel_size, kernel_size)),
+            'b': initialize_method(size=(1, out_channels, 1, 1)),
+        }
 
         self.grads = {'W' : None, 'b' : None}
         self.input = None
@@ -97,11 +100,12 @@ class conv2D(Layer):
             X_pad = X
         self.input_padded = X_pad
 
-        batch_size,__,original_h,original_w = X.shape
+        batch_size,__,_,_ = X.shape
+        _, _, padded_h, padded_w = X_pad.shape
         k = self.kernel_size 
-        out_h = (original_h - k) // self.stride +1
-        out_w = (original_w - k) // self.stride +1
-        output = np.zeros((batch_size,self.outchannels,out_w,out_h))
+        out_h = (padded_h - k) // self.stride + 1
+        out_w = (padded_w - k) // self.stride + 1
+        output = np.zeros((batch_size,self.outchannels,out_h,out_w))
         for i in range(batch_size):
             for j in range(self.outchannels):
                 for m in range(out_h):
@@ -109,7 +113,7 @@ class conv2D(Layer):
                     for n in range(out_w):
                         w_start = n*self.stride
                         window = X_pad[i, :, h_start:h_start+self.kernel_size, w_start:w_start+self.kernel_size]
-                        output[i,j,m,n] = np.sum(window * self.W[j]) + self.b[0, j, 0, 0] #三维的卷积
+                        output[i,j,m,n] = np.sum(window * self.params['W'][j]) + self.params['b'][0, j, 0, 0] #三维的卷积
         return output            
         # pass
 
@@ -119,8 +123,8 @@ class conv2D(Layer):
         """
         batch_size, _, out_h, out_w = grads.shape
         dX_pad = np.zeros_like(self.input_padded)
-        dW = np.zeros_like(self.W)
-        db = np.zeros_like(self.b)
+        dW = np.zeros_like(self.params['W'])
+        db = np.zeros_like(self.params['b'])
 
         for n in range(batch_size):
             for oc in range(self.outchannels):
@@ -131,7 +135,7 @@ class conv2D(Layer):
                         grad_value = grads[n, oc, i, j]
                         window = self.input_padded[n, :, h_start:h_start+self.kernel_size, w_start:w_start+self.kernel_size]
                         dW[oc] += window * grad_value
-                        dX_pad[n, :, h_start:h_start+self.kernel_size, w_start:w_start+self.kernel_size] += self.W[oc] * grad_value
+                        dX_pad[n, :, h_start:h_start+self.kernel_size, w_start:w_start+self.kernel_size] += self.params['W'][oc] * grad_value
                         db[0, oc, 0, 0] += grad_value
 
         self.grads['W'] = dW
@@ -228,7 +232,7 @@ class MultiCrossEntropyLoss(Layer):
             self.predicts = softmax(predicts)
         else:
             self.predicts = predicts
-        correct_prob_log = np.log(predicts[np.arange(batch_size), self.labels]+ep)
+        correct_prob_log = np.log(self.predicts[np.arange(batch_size), self.labels]+ep)
         if self.label_smooth_para:
             # assert self.max_classes>1 , '类别为1种，无需MLP帮助分类'   
             log_sum_prob = np.sum(np.log(self.predicts+ep),axis=1)
