@@ -155,7 +155,8 @@ class Model_CNN(Layer):
             layer.params['b'] = saved_params['b']
             layer.weight_decay = saved_params['weight_decay']
             layer.weight_decay_lambda = saved_params['lambda']
-        
+        # pass
+
     def save_model(self, save_path):
         param_list = [{
             'channels_list': self.channels_list,
@@ -172,3 +173,4 @@ class Model_CNN(Layer):
         
         with open(save_path, 'wb') as f:
             pickle.dump(param_list, f)
+        # pass

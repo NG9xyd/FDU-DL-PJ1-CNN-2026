@@ -106,6 +106,7 @@ class conv2D(Layer):
         out_h = (padded_h - k) // self.stride + 1
         out_w = (padded_w - k) // self.stride + 1
         output = np.zeros((batch_size,self.outchannels,out_h,out_w))
+        # 进行卷积
         for i in range(batch_size):
             for j in range(self.outchannels):
                 for m in range(out_h):
@@ -125,7 +126,7 @@ class conv2D(Layer):
         dX_pad = np.zeros_like(self.input_padded)
         dW = np.zeros_like(self.params['W'])
         db = np.zeros_like(self.params['b'])
-
+        
         for n in range(batch_size):
             for oc in range(self.outchannels):
                 for i in range(out_h):
