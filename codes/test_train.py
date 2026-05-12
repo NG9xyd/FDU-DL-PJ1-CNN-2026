@@ -40,9 +40,21 @@ train_imgs = train_imgs / train_imgs.max()
 valid_imgs = valid_imgs / valid_imgs.max()
 
 linear_model = nn.models.Model_MLP([train_imgs.shape[-1], 600, 10], 'ReLU', [1e-4, 1e-4]) #MLP_1 PARA
+CNN_model_1 = nn.models.Model_CNN(channels_list=[8],kernel_size_list=[3],stride_list=[1],
+    num_classes=10,image_size=28,act_func='ReLU',weight_decay_lambda=1e-4
+)
+CNN_model_2 = nn.models.Model_CNN(
+    channels_list=[8, 16],kernel_size_list=[3, 3],stride_list=[1, 1],
+    num_classes=10,image_size=28,act_func='ReLU',weight_decay_lambda=1e-4
+)
+# 由于我们的CNN的格式是[B,C,H,W]所以要reshape一下
+train_imgs = train_imgs / train_imgs.max()
+valid_imgs = valid_imgs / valid_imgs.max()
 
-CNN_model_1 = nn.models.Model_CNN([],)
-CNN_model_2 = nn.models.Model_CNN([],)
+train_imgs = train_imgs.reshape(-1, 1, 28, 28)
+valid_imgs = valid_imgs.reshape(-1, 1, 28, 28)
+
+model = CNN_model_1
 
 optimizer = nn.optimizer.SGD(init_lr=0.06, model=linear_model)
 scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[800, 2400, 4000], gamma=0.5)
@@ -58,3 +70,7 @@ _.set_tight_layout(1)
 plot(runner, axes)
 
 plt.show()
+
+
+
+model = CNN_model_1
