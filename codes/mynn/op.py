@@ -78,6 +78,9 @@ class conv2D(Layer):
         self.grads = {'W' : None, 'b' : None}
         self.input = None
         self.input_padded = None
+        self.input_col = None
+        self.out_h = None
+        self.out_w = None
 
         self.weight_decay = weight_decay
         self.weight_decay_lambda = weight_decay_lambda
@@ -105,16 +108,21 @@ class conv2D(Layer):
         k = self.kernel_size 
         out_h = (padded_h - k) // self.stride + 1
         out_w = (padded_w - k) // self.stride + 1
-        output = np.zeros((batch_size,self.outchannels,out_h,out_w))
-        # 进行卷积
-        for i in range(batch_size):
-            for j in range(self.outchannels):
-                for m in range(out_h):
-                    h_start = m*self.stride 
-                    for n in range(out_w):
-                        w_start = n*self.stride
-                        window = X_pad[i, :, h_start:h_start+self.kernel_size, w_start:w_start+self.kernel_size]
-                        output[i,j,m,n] = np.sum(window * self.params['W'][j]) + self.params['b'][0, j, 0, 0] #三维的卷积
+        self.out_h = out_h
+        self.out_w = out_w
+
+        # 取出所有window
+        windows = np.lib.stride_tricks.sliding_window_view(X_pad, (k, k), axis=(2, 3))
+        windows = windows[:, :, ::self.stride, ::self.stride, :, :]
+        # 将R4转化为R2矩阵加速 im2col技巧
+        # [batch, out_h, out_w, channels, kernel, kernel] -> [batch*out_h*out_w, channels*kernel*kernel]
+        self.input_col = windows.transpose(0, 2, 3, 1, 4, 5).reshape(batch_size * out_h * out_w, -1)
+        W_col = self.params['W'].reshape(self.outchannels, -1).T
+        b_col = self.params['b'].reshape(1, self.outchannels)
+
+        output_col = self.input_col @ W_col + b_col
+        #col2im
+        output = output_col.reshape(batch_size, out_h, out_w, self.outchannels).transpose(0, 3, 1, 2)
         return output            
         # pass
 
@@ -123,21 +131,23 @@ class conv2D(Layer):
         grads : [batch_size, out_channel, new_H, new_W]
         """
         batch_size, _, out_h, out_w = grads.shape
+        assert out_h == self.out_h and out_w == self.out_w
+
+        dout_col = grads.transpose(0, 2, 3, 1).reshape(batch_size * out_h * out_w, self.outchannels)
+        W_col = self.params['W'].reshape(self.outchannels, -1)
+
+        dW = (dout_col.T @ self.input_col).reshape(self.params['W'].shape)
+        db = np.sum(grads, axis=(0, 2, 3), keepdims=True)
+
+        dX_col = dout_col @ W_col
+        dX_windows = dX_col.reshape(batch_size, out_h, out_w, self.in_channels, self.kernel_size, self.kernel_size)
         dX_pad = np.zeros_like(self.input_padded)
-        dW = np.zeros_like(self.params['W'])
-        db = np.zeros_like(self.params['b'])
-        
-        for n in range(batch_size):
-            for oc in range(self.outchannels):
-                for i in range(out_h):
-                    h_start = i * self.stride
-                    for j in range(out_w):
-                        w_start = j * self.stride
-                        grad_value = grads[n, oc, i, j]
-                        window = self.input_padded[n, :, h_start:h_start+self.kernel_size, w_start:w_start+self.kernel_size]
-                        dW[oc] += window * grad_value
-                        dX_pad[n, :, h_start:h_start+self.kernel_size, w_start:w_start+self.kernel_size] += self.params['W'][oc] * grad_value
-                        db[0, oc, 0, 0] += grad_value
+
+        for i in range(out_h):
+            h_start = i * self.stride
+            for j in range(out_w):
+                w_start = j * self.stride
+                dX_pad[:, :, h_start:h_start+self.kernel_size, w_start:w_start+self.kernel_size] += dX_windows[:, i, j, :, :, :]
 
         self.grads['W'] = dW
         self.grads['b'] = db
