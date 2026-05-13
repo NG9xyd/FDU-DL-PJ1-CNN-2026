@@ -8,11 +8,11 @@ import gzip
 import pickle
 import os
 
-lr_list = [0.001, 0.002, 0.005, 0.01, 0.02]
+lr_list = [0.001, 0.005, 0.01, 0.02]
 mu_list = [0.5, 0.9, 0.99]
-wd_list = [1e-5, 1e-4, 5e-4]
-channel_1 = [2, 4, 8, 16]
-channel_2 = [2, 4, 8, 16]
+wd_list = [1e-5, 1e-4]
+channel_1 = [4, 8]
+channel_2 = [4, 8]
 
 # fixed seed for experiment
 np.random.seed(309)
@@ -112,13 +112,13 @@ class RunnerM4search():
                 self.dev_scores.append(dev_score)
                 self.dev_loss.append(dev_loss)
 
-                if (iteration) % log_iters == 0:
+                """if (iteration) % log_iters == 0:
                     print(f"epoch: {epoch}, iteration: {iteration}")
                     print(f"[Train] loss: {trn_loss}, score: {trn_score}")
-                    print(f"[Dev] loss: {dev_loss}, score: {dev_score}")
+                    print(f"[Dev] loss: {dev_loss}, score: {dev_score}")"""
 
             if dev_score > best_score:
-                save_path = os.path.join(save_dir, 'best_model.pickle')
+                # save_path = os.path.join(save_dir, 'best_model.pickle')
                 print(f"best accuracy performence has been updated: {best_score:.5f} --> {dev_score:.5f}")
                 best_score = dev_score
         self.best_score = best_score
