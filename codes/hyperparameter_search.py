@@ -11,8 +11,8 @@ import os
 lr_list = [0.001, 0.005, 0.01, 0.02]
 mu_list = [0.5, 0.9, 0.99]
 wd_list = [1e-5, 1e-4]
-channel_1 = [4, 8]
-channel_2 = [4, 8]
+# channel_1 = [4, 8]
+# channel_2 = [2, 4, 8]
 
 # fixed seed for experiment
 np.random.seed(309)
@@ -69,14 +69,14 @@ class RunnerM4search():
         self.train_loss = []
         self.dev_loss = []
 
-    def train(self, train_set, dev_set, max_iter=300, **kwargs):
+    def train(self, train_set, dev_set, max_iter=100, **kwargs):
 
         num_epochs = kwargs.get("num_epochs", 0)
-        log_iters = kwargs.get("log_iters", 100)
+        """log_iters = kwargs.get("log_iters", 100)
         save_dir = kwargs.get("save_dir", "best_model")
 
         if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
+            os.mkdir(save_dir)"""
 
         best_score = 0
 
@@ -134,21 +134,26 @@ class RunnerM4search():
 import itertools
 best_score = 0
 best_loss = 0
-for lr, mu, wd, c1, c2 in itertools.product(lr_list, mu_list, wd_list, channel_1, channel_2):
+c1,c2 = 8,8
+for lr, mu, wd in itertools.product(lr_list, mu_list, wd_list):
+    params = {'lr': lr, 'mu': mu, 'wd': wd, 'channels': [c1, c2]}
+    print(f"当前训练参数:params={params}")
     model = nn.models.Model_CNN(
         channels_list=[c1, c2],kernel_size_list=[3, 3],stride_list=[1, 1],
         num_classes=10,image_size=28,act_func='ReLU',weight_decay_lambda=wd
     )
     optimizer = nn.optimizer.MomentGD(init_lr=lr, model=model, mu=mu)
-    scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, gamma=0.2, milestones=[290])
+    scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, gamma=0.2, milestones=[500])
     loss_fn = nn.op.MultiCrossEntropyLoss(model=model, max_classes=train_labs.max()+1)
 
     runner = RunnerM4search(model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
 
-    runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=1, log_iters=100)
+    runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=1, log_iters=100, max_iter=100)
     
     current_best = runner.best_score
     if current_best > best_score:
         best_score = current_best
         best_params = {'lr': lr, 'mu': mu, 'wd': wd, 'channels': [c1, c2]}
         print(f"已寻找到一个更合适的超参:score={best_score:.4f}, params={best_params}")
+
+# result：已寻找到一个更合适的超参:score=0.1210, params={'lr': 0.01, 'mu': 0.5, 'wd': 0.0001, 'channels': [8, 8]}
