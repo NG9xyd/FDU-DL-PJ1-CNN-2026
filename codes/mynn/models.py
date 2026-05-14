@@ -76,7 +76,7 @@ class Model_CNN(Layer):
     """
     A model with conv2D layers. Implement it using the operators you have written in op.py
     """
-    def __init__(self, channels_list=None, kernel_size_list=None, stride_list=None, num_classes=10, image_size=28, act_func='ReLU', weight_decay_lambda=1e-4):
+    def __init__(self, channels_list=None, kernel_size_list=None, stride_list=None, fc_size_list=None, num_classes=10, image_size=28, act_func='ReLU', weight_decay_lambda=1e-4):
         super().__init__()
         self.channels_list = channels_list
         self.kernel_size_list = kernel_size_list
@@ -85,6 +85,7 @@ class Model_CNN(Layer):
         self.image_size = image_size
         self.act_func = act_func
         self.weight_decay_lambda = weight_decay_lambda
+        self.fc_size_list = fc_size_list
         self.layers = []
         if channels_list is None or kernel_size_list is None:
             return
@@ -113,7 +114,16 @@ class Model_CNN(Layer):
             feature_size = (feature_size - kernel_size) // stride + 1
             assert feature_size > 0, '卷积后的特征图尺寸小于等于0，请检查 kernel_size_list 和 stride_list'
         conv_out = channels_list[-1] * feature_size * feature_size
-        self.layers.append(Linear(conv_out,num_classes,weight_decay_lambda=weight_decay_lambda))
+        # 添加多个全连接层
+        if fc_size_list is None:
+            self.layers.append(Linear(conv_out,num_classes,weight_decay_lambda=weight_decay_lambda))
+        else:
+            self.layers.append(Linear(conv_out,self.fc_size_list[0],weight_decay_lambda=weight_decay_lambda))
+            self.layers.append(ReLU())
+            for i in range(1,len(fc_size_list)):
+                self.layers.append(Linear(fc_size_list[i-1],fc_size_list[i],weight_decay_lambda=weight_decay_lambda))
+                self.layers.append(ReLU())
+            self.layers.append(Linear(self.fc_size_list[-1],num_classes,weight_decay_lambda=weight_decay_lambda))
         #pass
 
     def __call__(self, X):

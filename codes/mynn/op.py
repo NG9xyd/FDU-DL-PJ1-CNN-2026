@@ -18,11 +18,14 @@ class Linear(Layer):
     """
     The linear layer for a neural network. You need to implement the forward function and the backward function.
     """
-    def __init__(self, in_dim, out_dim, initialize_method=np.random.normal, weight_decay=False, weight_decay_lambda=1e-8) -> None:
+    def __init__(self, in_dim, out_dim, initialize_method=np.random.normal, weight_decay=True, weight_decay_lambda=1e-8) -> None:
         super().__init__()
+        # HE 初始化
+        scale_w = np.sqrt(2.0 / in_dim)
+        scale_b = np.sqrt(2.0 / out_dim)
         self.params = {
-            'W': initialize_method(size=(in_dim, out_dim)),
-            'b': initialize_method(size=(1, out_dim)),
+            'W': np.random.normal(0, scale_w, size=(in_dim, out_dim)),
+            'b': np.random.normal(0, scale_b, size=(1, out_dim)),
         }
         self.grads = {'W' : None, 'b' : None}
         self.input = None
@@ -63,16 +66,18 @@ class conv2D(Layer):
     """
     The 2D convolutional layer. Try to implement it on your own.
     """
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, initialize_method=np.random.normal, weight_decay=False, weight_decay_lambda=1e-8) -> None:
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, initialize_method=np.random.normal, weight_decay=True, weight_decay_lambda=1e-8) -> None:
         super().__init__()
         self.in_channels = in_channels
         self.outchannels = out_channels
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
+        scale_w = np.sqrt(2.0 / (in_channels * kernel_size * kernel_size))
+        scale_b = np.sqrt(2.0 / out_channels)   # 可选
         self.params = {
-            'W': initialize_method(size=(out_channels, in_channels, kernel_size, kernel_size)),
-            'b': initialize_method(size=(1, out_channels, 1, 1)),
+            'W': np.random.normal(0, scale_w, size=(out_channels, in_channels, kernel_size, kernel_size)),
+            'b': np.random.normal(0, scale_b, size=(1, out_channels, 1, 1)),
         }
 
         self.grads = {'W' : None, 'b' : None}
