@@ -76,11 +76,12 @@ class Model_CNN(Layer):
     """
     A model with conv2D layers. Implement it using the operators you have written in op.py
     """
-    def __init__(self, channels_list=None, kernel_size_list=None, stride_list=None, fc_size_list=None, num_classes=10, image_size=28, act_func='ReLU', weight_decay_lambda=1e-4):
+    def __init__(self, channels_list=None, kernel_size_list=None, stride_list=None, padding_list=None, fc_size_list=None, num_classes=10, image_size=28, act_func='ReLU', weight_decay_lambda=1e-4):
         super().__init__()
         self.channels_list = channels_list
         self.kernel_size_list = kernel_size_list
         self.stride_list = stride_list
+        self.padding_list = padding_list
         self.num_classes = num_classes
         self.image_size = image_size
         self.act_func = act_func
@@ -92,7 +93,9 @@ class Model_CNN(Layer):
 
         if stride_list == None:
             stride_list = [1] * len(channels_list)
-        assert len(channels_list)==len(kernel_size_list) and len(kernel_size_list) == len(stride_list),'第一层channel为1不算入channellist中或者长度不一致，请注意修改'
+        if padding_list == None:
+            padding_list = [0] * len(channels_list)
+        assert len(channels_list)==len(kernel_size_list) and len(kernel_size_list) == len(stride_list) and len(stride_list) == len(padding_list),'第一层channel为1不算入channellist中或者长度不一致，请注意修改'
         if act_func != 'ReLU':
             raise NotImplementedError
         self.channels_list = channels_list
@@ -100,19 +103,20 @@ class Model_CNN(Layer):
         self.image_size = image_size
         self.kernel_size_list = kernel_size_list
         self.stride_list = stride_list
+        self.padding_list = padding_list
         self.act_func = act_func
         self.weight_decay_lambda = weight_decay_lambda
         self.CNN_layer_num = len(channels_list)      
-        self.layers.append(conv2D(in_channels=1,out_channels=channels_list[0],kernel_size=kernel_size_list[0],stride=stride_list[0],weight_decay_lambda=weight_decay_lambda))
+        self.layers.append(conv2D(in_channels=1,out_channels=channels_list[0],kernel_size=kernel_size_list[0],stride=stride_list[0],padding=padding_list[0],weight_decay_lambda=weight_decay_lambda))
         self.layers.append(ReLU())
         for i in range(1,self.CNN_layer_num):
-            self.layers.append(conv2D(in_channels=channels_list[i-1],out_channels=channels_list[i],kernel_size=kernel_size_list[i],stride=stride_list[i],weight_decay_lambda=weight_decay_lambda))
+            self.layers.append(conv2D(in_channels=channels_list[i-1],out_channels=channels_list[i],kernel_size=kernel_size_list[i],stride=stride_list[i],padding=padding_list[i],weight_decay_lambda=weight_decay_lambda))
             self.layers.append(ReLU())
         self.layers.append(Flatten())
         feature_size = image_size
-        for kernel_size, stride in zip(kernel_size_list, stride_list):
-            feature_size = (feature_size - kernel_size) // stride + 1
-            assert feature_size > 0, '卷积后的特征图尺寸小于等于0，请检查 kernel_size_list 和 stride_list'
+        for kernel_size, stride, padding in zip(kernel_size_list, stride_list, padding_list):
+            feature_size = (feature_size + 2 * padding - kernel_size) // stride + 1
+            assert feature_size > 0, '卷积后的特征图尺寸小于等于0，请检查 kernel_size_list、stride_list 和 padding_list'
         conv_out = channels_list[-1] * feature_size * feature_size
         # 添加多个全连接层
         if fc_size_list is None:
@@ -154,6 +158,7 @@ class Model_CNN(Layer):
             channels_list=config['channels_list'],
             kernel_size_list=config['kernel_size_list'],
             stride_list=config['stride_list'],
+            padding_list=config.get('padding_list'),
             fc_size_list=config['fc_size_list'],
             num_classes=config['num_classes'],
             image_size=config['image_size'],
@@ -175,6 +180,7 @@ class Model_CNN(Layer):
             'channels_list': self.channels_list,
             'kernel_size_list': self.kernel_size_list,
             'stride_list': self.stride_list,
+            'padding_list': self.padding_list,
             'num_classes': self.num_classes,
             'image_size': self.image_size,
             'act_func': self.act_func,

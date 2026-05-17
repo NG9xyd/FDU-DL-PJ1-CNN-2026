@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import mynn as nn
 
+plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei']
+plt.rcParams['axes.unicode_minus'] = False
 
 def load_mnist(image_path, label_path, flatten=False, limit=None):
     with gzip.open(image_path, 'rb') as f:
@@ -109,6 +111,7 @@ class report_visualization():
         fig.tight_layout()
         if self.save_prefix is not None:
             fig.savefig(f'{self.save_prefix}_confusion_matrix.png', dpi=160)
+        plt.show()
         return matrix
 
     def show(self, correct_num=6, wrong_num=6):
@@ -127,8 +130,8 @@ class report_visualization():
             losses = -np.log(self.probs[wrong_indices, self.labels[wrong_indices]] + 1e-10)
             wrong_indices = wrong_indices[np.argsort(losses)[-wrong_num:]]
 
-        self._plot_examples(correct_indices, '正确预测的示例', '正确')
-        self._plot_examples(wrong_indices, 'Loss最高的几个示例', '错误')
+        self._plot_examples(correct_indices, 'Correct Predictions', 'correct')
+        self._plot_examples(wrong_indices, 'Highest Loss Mistakes', 'wrong')
 
     def _plot_examples(self, indices, title, suffix):
         if len(indices) == 0:
@@ -158,3 +161,4 @@ class report_visualization():
         fig.tight_layout()
         if self.save_prefix is not None:
             fig.savefig(f'{self.save_prefix}_{suffix}_examples.png', dpi=160)
+        plt.show()
