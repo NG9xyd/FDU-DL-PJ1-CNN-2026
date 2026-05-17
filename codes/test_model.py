@@ -5,9 +5,6 @@ import gzip
 import matplotlib.pyplot as plt
 import pickle
 
-model = nn.models.Model_MLP()
-model.load_model(r'.\saved_models\best_model.pickle')
-
 test_images_path = r'.\dataset\MNIST\t10k-images-idx3-ubyte.gz'
 test_labels_path = r'.\dataset\MNIST\t10k-labels-idx1-ubyte.gz'
 
@@ -21,5 +18,13 @@ with gzip.open(test_labels_path, 'rb') as f:
 
 test_imgs = test_imgs / test_imgs.max()
 
+model = nn.models.Model_MLP()
+model.load_model(r'.\saved_models\best_model_MLP.pickle')
 logits = model(test_imgs)
-print(nn.metric.accuracy(logits, test_labs))
+print(f"MLP准确率为",nn.metric.accuracy(logits, test_labs))
+
+model = nn.models.Model_CNN()
+model.load_model(r'.\saved_models\best_model_CNN.pickle')
+test_imgs = test_imgs.reshape(-1, 1, 28, 28)
+logits = model(test_imgs)
+print(f"CNN准确率为",nn.metric.accuracy(logits, test_labs))

@@ -154,13 +154,16 @@ class Model_CNN(Layer):
             channels_list=config['channels_list'],
             kernel_size_list=config['kernel_size_list'],
             stride_list=config['stride_list'],
+            fc_size_list=config['fc_size_list'],
             num_classes=config['num_classes'],
             image_size=config['image_size'],
             act_func=config['act_func'],
             weight_decay_lambda=config['weight_decay_lambda'],
         )
         optimizable_layers = [layer for layer in self.layers if layer.optimizable]
+        assert len(optimizable_layers) == len(param_list) - 1, 'Saved model architecture does not match current CNN architecture.'
         for layer, saved_params in zip(optimizable_layers, param_list[1:]):
+            assert layer.params['W'].shape == saved_params['W'].shape and layer.params['b'].shape == saved_params['b'].shape, 'Saved parameter shape does not match current layer shape.'
             layer.params['W'] = saved_params['W']
             layer.params['b'] = saved_params['b']
             layer.weight_decay = saved_params['weight_decay']
@@ -176,6 +179,7 @@ class Model_CNN(Layer):
             'image_size': self.image_size,
             'act_func': self.act_func,
             'weight_decay_lambda': self.weight_decay_lambda,
+            'fc_size_list': self.fc_size_list,
         }]
         for layer in self.layers:
             if layer.optimizable:
