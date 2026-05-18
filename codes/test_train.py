@@ -41,11 +41,15 @@ valid_imgs = valid_imgs / valid_imgs.max()
 
 linear_model = nn.models.Model_MLP([train_imgs.shape[-1], 600, 10], 'ReLU', [1e-4, 1e-4]) #MLP_1 PARA
 CNN_model_2 = nn.models.Model_CNN(
-    channels_list=[6, 16],kernel_size_list=[5, 5],stride_list=[2, 2],fc_size_list=[120, 84],
-    num_classes=10,image_size=28,act_func='ReLU',weight_decay_lambda=5e-4
+    channels_list=[8, 16],kernel_size_list=[5, 3],stride_list=[2, 1],fc_size_list=[120, 84],
+    num_classes=10,image_size=28,act_func='ReLU',weight_decay_lambda=1e-4
+)
+CNN_model_4 = nn.models.Model_CNN(
+    channels_list=[16, 32, 32, 32],kernel_size_list=[3, 3, 3, 3],stride_list=[1, 2, 1, 2],fc_size_list=[120, 84],padding_list=[1, 1, 1, 1],
+    num_classes=10,image_size=28,act_func='ReLU',weight_decay_lambda=1e-4
 )
 
-model = CNN_model_2
+model = CNN_model_4
 
 if isinstance(model, nn.models.Model_CNN):
 # 由于我们的CNN的格式是[B,C,H,W]所以要reshape一下
@@ -55,13 +59,13 @@ if isinstance(model, nn.models.Model_CNN):
     train_imgs = train_imgs.reshape(-1, 1, 28, 28)
     valid_imgs = valid_imgs.reshape(-1, 1, 28, 28)
 
-    optimizer = nn.optimizer.MomentGD(init_lr=0.001, model=model, mu=0.9)
+    optimizer = nn.optimizer.MomentGD(init_lr=0.005, model=model, mu=0.9)
     scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[5600, 9800, 12600], gamma=0.5)
     loss_fn = nn.op.MultiCrossEntropyLoss(model=model, max_classes=train_labs.max()+1)
 
     runner = nn.runner.RunnerM(model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
 
-    runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=10, log_iters=100, save_dir=r'./best_models')
+    runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=5, log_iters=100, save_dir=r'./best_models')
 
     _, axes = plt.subplots(1, 2)
     axes.reshape(-1)
@@ -71,7 +75,7 @@ if isinstance(model, nn.models.Model_CNN):
     plt.show()
 
 else:
-    optimizer = nn.optimizer.SGD(init_lr=0.06, model=model)
+    optimizer = nn.optimizer.MomentGD(init_lr=0.06, model=model, mu=0.9)
     scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[800, 2400, 4000], gamma=0.5)
     loss_fn = nn.op.MultiCrossEntropyLoss(model=model, max_classes=train_labs.max()+1)
     runner = nn.runner.RunnerM(model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
