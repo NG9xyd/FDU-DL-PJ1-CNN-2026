@@ -221,14 +221,12 @@ class MultiCrossEntropyLoss(Layer):
         super().__init__()
         self.model = model 
         self.max_classes = max_classes
-        self.label_smooth_para = 1e-2
+        self.label_smooth_para = None
         self.has_softmax = True
         self.predicts = None
-        # 说不定实验报告可以看一下这个概率分布
         self.labels = None
         self.grads = None
         self.optimizable = True 
-        # 用于给test？
         # pass
 
     def __call__(self, predicts, labels):
