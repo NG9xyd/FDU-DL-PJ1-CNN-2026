@@ -18,9 +18,8 @@ EXTRA_RESULTS_DIR = r'.\extra_results'
 MLP_MODEL_PATH = r'.\saved_models\best_model_MLP.pickle'
 CNN_MODEL_PATH = r'.\saved_models\best_model_CNN.pickle'
 
-train_images_path = r'.\dataset\MNIST\train-images-idx3-ubyte.gz'
-train_labels_path = r'.\dataset\MNIST\train-labels-idx1-ubyte.gz'
-
+test_images_path = r'.\dataset\MNIST\t10k-images-idx3-ubyte.gz'
+test_labels_path = r'.\dataset\MNIST\t10k-labels-idx1-ubyte.gz'
 
 def load_saved_models():
     mlp = nn.models.Model_MLP()
@@ -124,14 +123,14 @@ def evaluate_on_images(model, images_nchw, labels, name, save_confusion=True):
 def visualize_saved_models():
     report_visualization(
         model_path=MLP_MODEL_PATH,
-        dataset_path=(train_images_path, train_labels_path),
+        dataset_path=(test_images_path, test_labels_path),
         model_type='mlp',
         save_prefix=os.path.join(EXTRA_RESULTS_DIR, 'MLP_original'),
     )()
 
     report_visualization(
         model_path=CNN_MODEL_PATH,
-        dataset_path=(train_images_path, train_labels_path),
+        dataset_path=(test_images_path, test_labels_path),
         model_type='cnn',
         save_prefix=os.path.join(EXTRA_RESULTS_DIR, 'CNN_original'),
     )()
@@ -220,8 +219,8 @@ def plot_reserved_digit_confusion_matrices(labels, preds, digit_groups):
 
 
 def robustness_tests(mlp, cnn):
-    train_images_path = r'.\dataset\MNIST\train-images-idx3-ubyte.gz'
-    images, labels = load_mnist(train_images_path, train_labels_path, flatten=False)
+    test_images_path = r'.\dataset\MNIST\t10k-images-idx3-ubyte.gz'
+    images, labels = load_mnist(test_images_path, test_labels_path, flatten=False)
 
     test_sets = {
         'original': images,
