@@ -221,7 +221,7 @@ class MultiCrossEntropyLoss(Layer):
         super().__init__()
         self.model = model 
         self.max_classes = max_classes
-        self.label_smooth_para = None
+        self.label_smooth_para = 1e-2
         self.has_softmax = True
         self.predicts = None
         self.labels = None
