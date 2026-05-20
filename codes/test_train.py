@@ -44,48 +44,41 @@ CNN_model_2 = nn.models.Model_CNN(
     channels_list=[8, 16],kernel_size_list=[5, 3],stride_list=[2, 1],fc_size_list=[120, 84],
     num_classes=10,image_size=28,act_func='ReLU',weight_decay_lambda=1e-4
 )
-CNN_model_4 = nn.models.Model_CNN(
-    channels_list=[16, 32, 32, 32],kernel_size_list=[3, 3, 3, 3],stride_list=[1, 2, 1, 2],fc_size_list=[120, 84],padding_list=[1, 1, 1, 1],
-    num_classes=10,image_size=28,act_func='ReLU',weight_decay_lambda=1e-4
-)
 
-model = CNN_model_4
+model = linear_model
+optimizer = nn.optimizer.MomentGD(init_lr=0.06, model=model, mu=0.9)
+scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[800, 2400, 4000], gamma=0.5)
+loss_fn = nn.op.MultiCrossEntropyLoss(model=model, max_classes=train_labs.max()+1)
+runner = nn.runner.RunnerM(model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
 
-if isinstance(model, nn.models.Model_CNN):
-# 由于我们的CNN的格式是[B,C,H,W]所以要reshape一下
-    train_imgs = train_imgs / train_imgs.max()
-    valid_imgs = valid_imgs / valid_imgs.max()
+runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=5, log_iters=100, save_dir=r'./saved_models')
 
-    train_imgs = train_imgs.reshape(-1, 1, 28, 28)
-    valid_imgs = valid_imgs.reshape(-1, 1, 28, 28)
+_, axes = plt.subplots(1, 2)
+axes.reshape(-1)
+_.set_tight_layout(1)
+plot(runner, axes)
+plt.savefig("MLP_train_curve.jpg",dpi=300)
+plt.show()
 
-    optimizer = nn.optimizer.MomentGD(init_lr=0.005, model=model, mu=0.9)
-    scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[5600, 9800, 12600], gamma=0.5)
-    loss_fn = nn.op.MultiCrossEntropyLoss(model=model, max_classes=train_labs.max()+1)
 
-    runner = nn.runner.RunnerM(model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
+model = CNN_model_2
+train_imgs = train_imgs / train_imgs.max()
+valid_imgs = valid_imgs / valid_imgs.max()
 
-    runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=5, log_iters=100, save_dir=r'./best_models')
+train_imgs = train_imgs.reshape(-1, 1, 28, 28)
+valid_imgs = valid_imgs.reshape(-1, 1, 28, 28)
 
-    _, axes = plt.subplots(1, 2)
-    axes.reshape(-1)
-    _.set_tight_layout(1)
-    plot(runner, axes)
-    plt.savefig("CNN_train_curve.jpg",dpi=300)
-    plt.show()
+optimizer = nn.optimizer.MomentGD(init_lr=0.005, model=model, mu=0.9)
+scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[5600, 9800, 12600], gamma=0.5)
+loss_fn = nn.op.MultiCrossEntropyLoss(model=model, max_classes=train_labs.max()+1)
 
-else:
-    optimizer = nn.optimizer.MomentGD(init_lr=0.06, model=model, mu=0.9)
-    scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[800, 2400, 4000], gamma=0.5)
-    loss_fn = nn.op.MultiCrossEntropyLoss(model=model, max_classes=train_labs.max()+1)
-    runner = nn.runner.RunnerM(model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
+runner = nn.runner.RunnerM(model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
 
-    runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=5, log_iters=100, save_dir=r'./best_models')
+runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=5, log_iters=100, save_dir=r'./saved_models')
 
-    _, axes = plt.subplots(1, 2)
-    axes.reshape(-1)
-    _.set_tight_layout(1)
-    plot(runner, axes)
-    plt.savefig("MLP_train_curve.jpg",dpi=300)
-    plt.show()
-
+_, axes = plt.subplots(1, 2)
+axes.reshape(-1)
+_.set_tight_layout(1)
+plot(runner, axes)
+plt.savefig("CNN_train_curve.jpg",dpi=300)
+plt.show()
