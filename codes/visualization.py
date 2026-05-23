@@ -1,5 +1,6 @@
 import gzip
 import pickle
+import os
 from struct import unpack
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,12 +40,53 @@ def infer_model_type(model_path):
         param_list = pickle.load(f)
     return 'cnn' if isinstance(param_list[0], dict) else 'mlp'
 
+def matrix_metrics(matrix):
+    matrix = np.asarray(matrix)
+    total = matrix.sum()
+    tp = np.diag(matrix)
+    pred_sum = matrix.sum(axis=0)
+    true_sum = matrix.sum(axis=1)
+    fp = pred_sum - tp
+    fn = true_sum - tp
+    tn = total - tp - fp - fn
+
+    precision = np.divide(tp, pred_sum, out=np.zeros_like(tp, dtype=np.float64), where=pred_sum != 0)
+    recall = np.divide(tp, true_sum, out=np.zeros_like(tp, dtype=np.float64), where=true_sum != 0)
+    f1 = np.divide(2 * precision * recall, precision + recall,
+                   out=np.zeros_like(precision, dtype=np.float64),
+                   where=(precision + recall) != 0)
+    accuracy = np.divide(tp + tn, total, out=np.zeros_like(tp, dtype=np.float64), where=total != 0)
+
+    return {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1,
+    }
+
+
+def save_metrics_csv(matrix, save_path):
+    metrics = matrix_metrics(matrix)
+    parent_dir = os.path.dirname(save_path)
+    if parent_dir:
+        os.makedirs(parent_dir, exist_ok=True)
+    with open(save_path, 'w', encoding='utf-8') as f:
+        f.write('class,accuracy,precision,recall,f1_score\n')
+        for i in range(matrix.shape[0]):
+            f.write(
+                f"{i},{metrics['accuracy'][i]:.6f},"
+                f"{metrics['precision'][i]:.6f},"
+                f"{metrics['recall'][i]:.6f},"
+                f"{metrics['f1'][i]:.6f}\n"
+            )
+    return metrics
+
 
 class report_visualization():
-    def __init__(self, model_path, dataset_path, num_classes=10, model_type='auto',
+    def __init__(self, model_path, dataset, num_classes=10, model_type='auto',
                  limit=None, save_prefix=None) -> None:
         self.model_path = model_path
-        self.dataset_path = dataset_path
+        self.dataset = dataset
         self.num_classes = num_classes
         self.model_type = model_type
         self.limit = limit
@@ -59,8 +101,9 @@ class report_visualization():
 
     def __call__(self):
         self.load()
-        self.confusion_matrix()
+        matrix = self.confusion_matrix()
         self.show()
+        return matrix
 
     def load(self):
         model_type = infer_model_type(self.model_path) if self.model_type == 'auto' else self.model_type
@@ -73,13 +116,13 @@ class report_visualization():
         self.model.load_model(self.model_path)
         is_cnn = isinstance(self.model, nn.models.Model_CNN)
 
-        if isinstance(self.dataset_path, (tuple, list)):
-            image_path, label_path = self.dataset_path
+        if self.dataset is not None:
+            self.images, self.labels = self.dataset
+            if not is_cnn and self.images.ndim > 2:
+                self.images = self.images.reshape(self.images.shape[0], -1)
         else:
-            image_path = self.dataset_path + r'\t10k-images-idx3-ubyte.gz'
-            label_path = self.dataset_path + r'\t10k-labels-idx1-ubyte.gz'
+            raise ValueError('dataset should be offered as (images, labels).')
 
-        self.images, self.labels = load_mnist(image_path, label_path, flatten=not is_cnn, limit=self.limit)
         self.logits = self.model(self.images)
         self.probs = softmax(self.logits)
         self.preds = np.argmax(self.logits, axis=1)
@@ -110,7 +153,11 @@ class report_visualization():
         fig.colorbar(im, ax=ax)
         fig.tight_layout()
         if self.save_prefix is not None:
+            save_dir = os.path.dirname(self.save_prefix)
+            if save_dir:
+                os.makedirs(save_dir, exist_ok=True)
             fig.savefig(f'{self.save_prefix}_confusion_matrix.png', dpi=160)
+            save_metrics_csv(matrix, f'{self.save_prefix}_metrics.csv')
         plt.show()
         return matrix
 

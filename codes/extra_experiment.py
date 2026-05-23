@@ -46,40 +46,9 @@ def accuracy_from_logits(logits, labels):
     return (preds == labels).sum() / labels.shape[0], preds
 
 
-def plot_confusion_matrix(labels, preds, title, save_path):
-    matrix = np.zeros((10, 10), dtype=np.int64)
-    for true_label, pred_label in zip(labels, preds):
-        matrix[true_label, pred_label] += 1
-
-    fig, ax = plt.subplots(figsize=(7, 6))
-    im = ax.imshow(matrix, cmap='Blues')
-    ax.set_xlabel('Predicted label')
-    ax.set_ylabel('True label')
-    ax.set_title(title)
-    ax.set_xticks(np.arange(10))
-    ax.set_yticks(np.arange(10))
-
-    threshold = matrix.max() * 0.6
-    for i in range(10):
-        for j in range(10):
-            color = 'white' if matrix[i, j] > threshold else 'black'
-            ax.text(j, i, str(matrix[i, j]), ha='center', va='center', color=color, fontsize=8)
-
-    fig.colorbar(im, ax=ax)
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=160)
-    plt.show()
-    return matrix
-
-
-def plot_digit_group_confusion_matrix(labels, preds, digit_group, title, save_path):
+def plot_digit_group_confusion_matrix(full_matrix, digit_group, title, save_path):
     digit_group = list(digit_group)
-    matrix = np.zeros((len(digit_group), len(digit_group)), dtype=np.int64)
-    label_to_idx = {label: idx for idx, label in enumerate(digit_group)}
-
-    mask = np.isin(labels, digit_group) & np.isin(preds, digit_group)
-    for true_label, pred_label in zip(labels[mask], preds[mask]):
-        matrix[label_to_idx[true_label], label_to_idx[pred_label]] += 1
+    matrix = full_matrix[np.ix_(digit_group, digit_group)]
 
     fig, ax = plt.subplots(figsize=(4, 3.5))
     im = ax.imshow(matrix, cmap='Blues')
@@ -99,41 +68,35 @@ def plot_digit_group_confusion_matrix(labels, preds, digit_group, title, save_pa
 
     fig.colorbar(im, ax=ax)
     fig.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     fig.savefig(save_path, dpi=160)
     plt.show()
     return matrix
 
 
-def evaluate_on_images(model, images_nchw, labels, name, save_confusion=True):
+def evaluate_on_images(model, images_nchw, labels, name):
     logits = predict_in_batches(model, images_nchw)
     acc, preds = accuracy_from_logits(logits, labels)
     print(f'{name}: accuracy={acc:.4f}')
-
-    matrix = None
-    if save_confusion:
-        matrix = plot_confusion_matrix(
-            labels,
-            preds,
-            title=f'{name} Confusion Matrix',
-            save_path=os.path.join(EXTRA_RESULTS_DIR, f'{name}_confusion_matrix.png'),
-        )
-    return acc, preds, matrix
+    return acc, preds
 
 
 def visualize_saved_models():
-    report_visualization(
+    images, labels = load_mnist(test_images_path, test_labels_path, flatten=False)
+    mlp_matrix = report_visualization(
         model_path=MLP_MODEL_PATH,
-        dataset_path=(test_images_path, test_labels_path),
+        dataset=(images, labels),
         model_type='mlp',
         save_prefix=os.path.join(EXTRA_RESULTS_DIR, 'MLP_original'),
     )()
 
-    report_visualization(
+    cnn_matrix = report_visualization(
         model_path=CNN_MODEL_PATH,
-        dataset_path=(test_images_path, test_labels_path),
+        dataset=(images, labels),
         model_type='cnn',
         save_prefix=os.path.join(EXTRA_RESULTS_DIR, 'CNN_original'),
     )()
+    return mlp_matrix, cnn_matrix
 
 
 def visualize_cnn_weights():
@@ -204,13 +167,12 @@ def scale_single_image(image, scale):
     return output
 
 
-def plot_reserved_digit_confusion_matrices(labels, preds, digit_groups):
+def plot_reserved_digit_confusion_matrices(full_matrix, digit_groups):
     matrices = {}
     for digit_group in digit_groups:
         group_name = '_'.join(str(digit) for digit in digit_group)
         matrices[group_name] = plot_digit_group_confusion_matrix(
-            labels,
-            preds,
+            full_matrix,
             digit_group=digit_group,
             title=f'Rotation 180 Confusion: {digit_group}',
             save_path=os.path.join(EXTRA_RESULTS_DIR, f'CNN_rotation_180_group_{group_name}_confusion_matrix.png'),
@@ -236,33 +198,37 @@ def robustness_tests(mlp, cnn):
 
     for test_name, test_images in test_sets.items():
         for model_name, model in [('MLP', mlp), ('CNN', cnn)]:
-            acc, preds, _ = evaluate_on_images(
+            acc, preds = evaluate_on_images(
                 model,
                 test_images,
                 labels,
                 name=f'{model_name}_{test_name}',
-                save_confusion=(model_name == 'CNN'),
             )
             summary.append((model_name, test_name, acc))
             if model_name == 'CNN' and test_name == 'small_rotation':
                 cnn_preds_for_rotation = preds
 
-    acc, preds, _ = evaluate_on_images(
+    acc, preds = evaluate_on_images(
         cnn,
         rotated_180,
         labels,
         name='CNN_rotation_180_reserved_digits',
-        save_confusion=False,
     )
     summary.append(('CNN', 'rotation_180_reserved_digits', acc))
+    rotation_180_matrix = report_visualization(
+        model_path=CNN_MODEL_PATH,
+        dataset=(rotated_180, labels),
+        model_type='cnn',
+        save_prefix=os.path.join(EXTRA_RESULTS_DIR, 'CNN_rotation_180'),
+    )()
     plot_reserved_digit_confusion_matrices(
-        labels,
-        preds,
+        rotation_180_matrix,
         digit_groups=[(2, 5), (6, 9), (1, 0)],
     )
 
     save_summary(summary)
     return summary, cnn_preds_for_rotation
+
 
 
 def save_summary(summary):
@@ -276,6 +242,7 @@ def save_summary(summary):
 
 
 def main():
+    os.makedirs(EXTRA_RESULTS_DIR, exist_ok=True)
     mlp, cnn = load_saved_models()
 
     visualize_saved_models()
