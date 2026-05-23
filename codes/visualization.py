@@ -46,19 +46,14 @@ def matrix_metrics(matrix):
     tp = np.diag(matrix)
     pred_sum = matrix.sum(axis=0)
     true_sum = matrix.sum(axis=1)
-    fp = pred_sum - tp
-    fn = true_sum - tp
-    tn = total - tp - fp - fn
 
     precision = np.divide(tp, pred_sum, out=np.zeros_like(tp, dtype=np.float64), where=pred_sum != 0)
     recall = np.divide(tp, true_sum, out=np.zeros_like(tp, dtype=np.float64), where=true_sum != 0)
     f1 = np.divide(2 * precision * recall, precision + recall,
                    out=np.zeros_like(precision, dtype=np.float64),
                    where=(precision + recall) != 0)
-    accuracy = np.divide(tp + tn, total, out=np.zeros_like(tp, dtype=np.float64), where=total != 0)
 
     return {
-        'accuracy': accuracy,
         'precision': precision,
         'recall': recall,
         'f1': f1,
@@ -71,11 +66,10 @@ def save_metrics_csv(matrix, save_path):
     if parent_dir:
         os.makedirs(parent_dir, exist_ok=True)
     with open(save_path, 'w', encoding='utf-8') as f:
-        f.write('class,accuracy,precision,recall,f1_score\n')
+        f.write('class,precision,recall,f1_score\n')
         for i in range(matrix.shape[0]):
             f.write(
-                f"{i},{metrics['accuracy'][i]:.6f},"
-                f"{metrics['precision'][i]:.6f},"
+                f"{i},{metrics['precision'][i]:.6f},"
                 f"{metrics['recall'][i]:.6f},"
                 f"{metrics['f1'][i]:.6f}\n"
             )
