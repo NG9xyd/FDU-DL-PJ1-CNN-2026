@@ -1,0 +1,12 @@
+model,test,accuracy
+MLP,original,0.982300
+CNN,original,0.989400
+MLP,gaussian_noise,0.973300
+CNN,gaussian_noise,0.983700
+MLP,small_rotation,0.964800
+CNN,small_rotation,0.974000
+MLP,scale_up,0.969000
+CNN,scale_up,0.980900
+MLP,scale_down,0.957200
+CNN,scale_down,0.977700
+CNN,rotation_180_reserved_digits,0.373300
