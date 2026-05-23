@@ -52,6 +52,7 @@ loss_fn = nn.op.MultiCrossEntropyLoss(model=model, max_classes=train_labs.max()+
 runner = nn.runner.RunnerM(model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
 
 runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=5, log_iters=100, save_dir=r'./saved_models')
+model.save_model(r'./saved_models/best_model_MLP.pickle')
 
 _, axes = plt.subplots(1, 2)
 axes.reshape(-1)
@@ -62,9 +63,6 @@ plt.show()
 
 
 model = CNN_model_2
-train_imgs = train_imgs / train_imgs.max()
-valid_imgs = valid_imgs / valid_imgs.max()
-
 train_imgs = train_imgs.reshape(-1, 1, 28, 28)
 valid_imgs = valid_imgs.reshape(-1, 1, 28, 28)
 
@@ -75,6 +73,7 @@ loss_fn = nn.op.MultiCrossEntropyLoss(model=model, max_classes=train_labs.max()+
 runner = nn.runner.RunnerM(model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
 
 runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=5, log_iters=100, save_dir=r'./saved_models')
+model.save_model(r'./saved_models/best_model_CNN.pickle')
 
 _, axes = plt.subplots(1, 2)
 axes.reshape(-1)
